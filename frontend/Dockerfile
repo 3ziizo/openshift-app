@@ -1,42 +1,35 @@
-# Save this as frontend/Dockerfile
+# Simple Frontend Dockerfile (no custom entrypoint)
 # Multi-stage build for production React app
 
 # Stage 1: Build the React app
 FROM registry.access.redhat.com/ubi8/nodejs-16:latest AS builder
 
-# Set working directory
 WORKDIR /opt/app-root/src
 
-# Copy package files
+# Copy package files and install dependencies
 COPY package*.json ./
-
-# Install dependencies
 USER 0
 RUN npm ci --silent
 USER 1001
 
-# Copy source code
+# Copy source and build
 COPY --chown=1001:0 . .
-
-# Build the React app for production
 RUN npm run build
 
 # Stage 2: Serve with nginx
 FROM registry.access.redhat.com/ubi8/nginx-120:latest
 
-# Copy built React app to nginx html directory
+# Copy built React app
 COPY --from=builder /opt/app-root/src/build /opt/app-root/src/
 
-# Copy custom nginx configuration
+# Copy nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
 
-# Create startup script for environment variables
-COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+# Create a simple environment config file at build time
+RUN echo 'window.ENV = { REACT_APP_API_URL: "/api" };' > /opt/app-root/src/env-config.js
 
 # Expose port 8080
 EXPOSE 8080
 
-# Use custom entrypoint
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+# Start nginx
 CMD ["nginx", "-g", "daemon off;"]
