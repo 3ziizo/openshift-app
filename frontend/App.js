@@ -2,7 +2,17 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
+// Get API URL from environment or runtime config
+const getApiUrl = () => {
+  // Try runtime config first (for containerized deployment)
+  if (window.ENV && window.ENV.REACT_APP_API_URL) {
+    return window.ENV.REACT_APP_API_URL;
+  }
+  // Fall back to build-time environment variable
+  return process.env.REACT_APP_API_URL || '/api';
+};
+
+const API_BASE_URL = getApiUrl();
 
 function App() {
   const [items, setItems] = useState([]);
@@ -18,11 +28,12 @@ function App() {
   const fetchItems = async () => {
     try {
       setLoading(true);
+      console.log('Fetching from:', `${API_BASE_URL}/items`);
       const response = await axios.get(`${API_BASE_URL}/items`);
       setItems(response.data);
       setError('');
     } catch (err) {
-      setError('Failed to fetch items. Make sure the backend is running.');
+      setError(`Failed to fetch items from ${API_BASE_URL}. Make sure the backend is running.`);
       console.error('Error fetching items:', err);
     } finally {
       setLoading(false);
@@ -63,6 +74,7 @@ function App() {
       <header className="App-header">
         <h1>Full-Stack OpenShift Application</h1>
         <p>React Frontend + Node.js Backend + PostgreSQL</p>
+        <small>API URL: {API_BASE_URL}</small>
       </header>
 
       <main className="App-main">
